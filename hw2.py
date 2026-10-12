@@ -146,15 +146,21 @@ CRITICAL RULES (read carefully):
    - each education entry: degree, school, field, graduation year
    - skills (every skill listed in the CV must exist in the profile)
 3. Job descriptions, headline, and hometown are NEVER the source of a discrepancy.
-4. Wording differences are NOT discrepancies, e.g. "Bachelor of Science" vs "BSc",
-   "UI/UX Design" vs "UI/UX", "Senior Engineer" for an Engineer role with seniority
-   senior, or listing FEWER skills than the profile.
+4. Wording differences are NOT discrepancies, e.g. "Bachelor of Science" vs
+   "BSc", "UI/UX Design" vs "UI/UX", "Senior Engineer" for an Engineer role
+   with seniority senior, or listing FEWER skills than the profile. For names,
+   use the LinkedIn `name` field as the authoritative spelling; a Facebook
+   display name that differs (e.g. "Kel Tsang" vs "Kelly Tsang") is NOT a
+   discrepancy.
 5. Many candidates share the same name. You MUST verify the RIGHT person by narrowing
    searches with location (and industry on LinkedIn).
-6. ZERO-TOLERANCE RULE: If ANY single verified field above differs from the profile
-   (including a single year shift like 2015 vs 2014, a job title upgrade, a wrong
-   city, a fake school, or a skill the candidate does not have), the CV HAS A
-   DISCREPANCY. In that case you MUST output SCORE: 0.0.
+6. ZERO-TOLERANCE RULE: If ANY single verified field above differs from the
+   LinkedIn profile (including but not limited to: an inflated job title, an
+   upgraded degree such as MSc when the profile says BSc, a fake school or
+   employer, a wrong city, shifted employment or graduation years like 2015
+   vs 2014, a name mismatch against the LinkedIn name, or a skill the
+   candidate does not have), the CV HAS A DISCREPANCY. In that case you MUST
+   output SCORE: 0.0.
 7. Only if EVERY verified field matches (allowing only wording differences and
    fewer skills) may you output SCORE: 1.0.
 8. Prefer decisive scores. Use 1.0 when all verified fields match, and 0.0 when
