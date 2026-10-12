@@ -83,8 +83,49 @@ def build_agent(tools: list[Any]) -> Any:
     from .env.
     """
     ### YOUR CODE HERE
-    _ = tools
-    return None
+    from langchain_deepseek import ChatDeepSeek
+    from langchain.agents import create_agent
+
+    model = ChatDeepSeek(
+        model=MODEL_NAME,
+        temperature=0,
+    )
+
+    system_prompt = """You are a CV verification agent for KYC compliance.
+
+Your job: given a candidate's CV text, verify whether its claims agree with the
+candidate's LinkedIn and Facebook profiles using the provided SocialGraph tools.
+
+IMPORTANT RULES:
+1. LinkedIn is the primary source. For every test candidate, Facebook agrees with LinkedIn.
+2. Discrepancies can ONLY be in these fields: name, city, jobs (company, title,
+   seniority, start and end years), education (degree, school, field, graduation
+   year), and skills.
+3. Job descriptions, headline, and hometown are NEVER the source of a discrepancy.
+4. Wording differences are NOT discrepancies, e.g. "Bachelor of Science" vs "BSc",
+   "UI/UX Design" vs "UI/UX", "Senior Engineer" for an Engineer role with seniority
+   senior, or listing fewer skills than the profile.
+5. Many candidates share the same name. You MUST verify the RIGHT person by narrowing
+   searches with location (and industry on LinkedIn).
+6. If the CV contains at least one false claim (inflated job title, shifted employment
+   or graduation years, upgraded degree, fake school or employer, wrong location, or
+   a skill the candidate does not have), the CV has a discrepancy.
+
+OUTPUT FORMAT:
+After your investigation, output ONLY a single number between 0 and 1 on the last line:
+- 1.0 = fully consistent (no discrepancy)
+- 0.0 = clear discrepancy
+- Values in between reflect partial confidence.
+
+Do NOT output any other text after the final number.
+"""
+
+    agent = create_agent(
+        model=model,
+        tools=tools,
+        system_prompt=system_prompt,
+    )
+    return agent
 
 
 async def score_cvs(agent: Any, cvs: dict[str, str]) -> dict[str, float | None]:
@@ -106,8 +147,35 @@ async def score_cvs(agent: Any, cvs: dict[str, str]) -> dict[str, float | None]:
     shared by the whole class.
     """
     ### YOUR CODE HERE
-    _ = agent
-    return {name: None for name in cvs}
+    semaphore = asyncio.Semaphore(3)
+
+    async def score_one(name: str, text: str) -> tuple[str, float | None]:
+        async with semaphore:
+            try:
+                user_message = (
+                    f"Verify the following CV against the candidate's LinkedIn "
+                    f"and Facebook profiles using the SocialGraph tools.\n\n"
+                    f"CV file name: {name}\n"
+                    f"CV text:\n{text}\n\n"
+                    f"After your investigation, output ONLY a single number "
+                    f"between 0 and 1 (1 = fully consistent, 0 = clear discrepancy)."
+                )
+                result = await agent.ainvoke(
+                    {"messages": [{"role": "user", "content": user_message}]}
+                )
+                messages = result.get("messages", [])
+                if not messages:
+                    return name, None
+                last = messages[-1]
+                content = getattr(last, "content", last)
+                score = parse_score(content)
+                return name, score
+            except Exception:
+                return name, 0.0
+
+    tasks = [score_one(name, text) for name, text in cvs.items()]
+    results = await asyncio.gather(*tasks)
+    return dict(results)
 
 
 # Everything below is provided runner/scoring code. No edits are needed.
