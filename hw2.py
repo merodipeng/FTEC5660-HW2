@@ -66,6 +66,46 @@ async def load_mcp_tools() -> list[Any]:
         }
     )
     return await client.get_tools()
+    
+def extract_score(content: Any) -> float | None:
+    """Robustly extract a score in [0, 1] from the agent's final message.
+
+    Tries, in order:
+    1. An explicit "SCORE: X" / "score is X" / "rating: X" pattern.
+    2. A standalone number on the last non-empty line.
+    3. The last number in [0, 1] found anywhere in the text.
+    Returns None if no valid score is found.
+    """
+    text = str(getattr(content, "content", content))
+
+    # 1. Explicit "score/rating/confidence: X"
+    m = re.search(
+        r"(?:score|rating|confidence)\s*(?:is|:|=)?\s*([01](?:\.\d+)?)",
+        text,
+        re.IGNORECASE,
+    )
+    if m:
+        val = float(m.group(1))
+        if 0.0 <= val <= 1.0:
+            return val
+
+    # 2. Standalone number on the last non-empty line
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if lines:
+        nums = re.findall(r"\b([01](?:\.\d+)?)\b", lines[-1])
+        if len(nums) == 1:
+            val = float(nums[0])
+            if 0.0 <= val <= 1.0:
+                return val
+
+    # 3. Last number in [0, 1] found anywhere
+    nums = re.findall(r"\b([01](?:\.\d+)?)\b", text)
+    if nums:
+        val = float(nums[-1])
+        if 0.0 <= val <= 1.0:
+            return val
+
+    return None
 
 
 def build_agent(tools: list[Any]) -> Any:
@@ -111,13 +151,12 @@ IMPORTANT RULES:
    or graduation years, upgraded degree, fake school or employer, wrong location, or
    a skill the candidate does not have), the CV has a discrepancy.
 
-OUTPUT FORMAT:
-After your investigation, output ONLY a single number between 0 and 1 on the last line:
-- 1.0 = fully consistent (no discrepancy)
-- 0.0 = clear discrepancy
-- Values in between reflect partial confidence.
-
-Do NOT output any other text after the final number.
+OUTPUT FORMAT (STRICT):
+On the very last line of your response, output exactly this format and nothing else:
+SCORE: <number>
+where <number> is between 0.0 and 1.0 (e.g., SCORE: 0.9).
+Do not write any other number on that line.
+Do not add punctuation or explanation after the number.
 """
 
     agent = create_agent(
@@ -168,7 +207,7 @@ async def score_cvs(agent: Any, cvs: dict[str, str]) -> dict[str, float | None]:
                     return name, None
                 last = messages[-1]
                 content = getattr(last, "content", last)
-                score = parse_score(content)
+                score = extract_score(content)                
                 return name, score
             except Exception:
                 return name, 0.0
