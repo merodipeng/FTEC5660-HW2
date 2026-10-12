@@ -137,19 +137,32 @@ Your job: given a candidate's CV text, verify whether its claims agree with the
 candidate's LinkedIn and Facebook profiles using the provided SocialGraph tools.
 
 IMPORTANT RULES:
+CRITICAL RULES (read carefully):
 1. LinkedIn is the primary source. For every test candidate, Facebook agrees with LinkedIn.
-2. Discrepancies can ONLY be in these fields: name, city, jobs (company, title,
-   seniority, start and end years), education (degree, school, field, graduation
-   year), and skills.
+2. You MUST verify these fields one by one:
+   - name
+   - city
+   - each job: company, title, seniority, start_year, end_year
+   - each education entry: degree, school, field, graduation year
+   - skills (every skill listed in the CV must exist in the profile)
 3. Job descriptions, headline, and hometown are NEVER the source of a discrepancy.
 4. Wording differences are NOT discrepancies, e.g. "Bachelor of Science" vs "BSc",
    "UI/UX Design" vs "UI/UX", "Senior Engineer" for an Engineer role with seniority
-   senior, or listing fewer skills than the profile.
+   senior, or listing FEWER skills than the profile.
 5. Many candidates share the same name. You MUST verify the RIGHT person by narrowing
    searches with location (and industry on LinkedIn).
-6. If the CV contains at least one false claim (inflated job title, shifted employment
-   or graduation years, upgraded degree, fake school or employer, wrong location, or
-   a skill the candidate does not have), the CV has a discrepancy.
+6. ZERO-TOLERANCE RULE: If ANY single verified field above differs from the profile
+   (including a single year shift like 2015 vs 2014, a job title upgrade, a wrong
+   city, a fake school, or a skill the candidate does not have), the CV HAS A
+   DISCREPANCY. In that case you MUST output SCORE: 0.0.
+7. Only if EVERY verified field matches (allowing only wording differences and
+   fewer skills) may you output SCORE: 1.0.
+8. Prefer decisive scores. Use 1.0 when all verified fields match, and 0.0 when
+   any verified field differs. Only use an intermediate value if you genuinely
+   could not retrieve the profile data (e.g., tool failure), and NEVER output
+   a value above 0.5 if you have confirmed ANY discrepancy. Do not output values
+   like 0.6 or 0.7 for a CV with a known mismatch.
+
 
 OUTPUT FORMAT (STRICT):
 On the very last line of your response, output exactly this format and nothing else:
